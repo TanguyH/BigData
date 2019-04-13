@@ -1,6 +1,26 @@
-# Kafka and Zookeeper
+### 1. Get Linux
 FROM alpine:3.9.2
 
+### 2. Get Java via the package manager
+RUN apk update \
+&& apk upgrade \
+&& apk add --no-cache bash \
+&& apk add --no-cache --virtual=build-dependencies unzip \
+&& apk add --no-cache curl \
+&& apk add --no-cache openjdk8-jre
+
+### 3. Get Python, PIP
+
+RUN apk add --no-cache python3 \
+&& python3 -m ensurepip \
+&& pip3 install --upgrade pip setuptools \
+&& rm -r /usr/lib/python*/ensurepip && \
+if [ ! -e /usr/bin/pip ]; then ln -s pip3 /usr/bin/pip ; fi && \
+if [[ ! -e /usr/bin/python ]]; then ln -sf /usr/bin/python3 /usr/bin/python; fi && \
+rm -r /root/.cache
+
+## TEST: instal ZOOKEEPER
+# Kafka and Zookeeper
 RUN apk add --update openjdk8-jre supervisor bash
 
 ENV ZOOKEEPER_VERSION 3.4.13
@@ -25,8 +45,22 @@ ADD assets/scripts/start-zookeeper.sh /usr/bin/start-zookeeper.sh
 # Supervisor config
 ADD assets/supervisor/kafka.ini assets/supervisor/zookeeper.ini /etc/supervisor.d/
 
-# 2181 is zookeeper, 9092 is kafka
-EXPOSE 2181 9092
+# 6666 is zookeeper, 7777 is kafka
+EXPOSE 6666 7777
 
 CMD ["supervisord", "-n"]
 
+
+### Get Flask for the app
+WORKDIR /app
+COPY . /app
+RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
+
+####
+#### OPTIONAL : 4. SET JAVA_HOME environment variable, uncomment the line below if you need it
+
+#ENV JAVA_HOME="/usr/lib/jvm/java-1.8-openjdk"
+
+####
+EXPOSE 80    
+#CMD ["python3", "app.py"]
