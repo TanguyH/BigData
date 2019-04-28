@@ -5,6 +5,6 @@ SERVER_PORT=2181
 
 for municipality in $municipalitiesList; do
     for sensor_type in $sensorTypes; do
-        ./kafka_2.11-1.0.0/bin/kafka-topics.sh --zookeeper localhost:$SERVER_PORT --delete --topic $municipality.$sensor_type
+        ./kafka_2.11-1.0.0/bin/kafka-topics.sh --zookeeper localhost:$SERVER_PORT --delete --topic $municipality-$sensor_type
     done
 done
