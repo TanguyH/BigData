@@ -2,8 +2,8 @@ import sys
 from kafka import KafkaConsumer
 from kafka.errors import KafkaError
 from pathlib import Path
-
-
+import glob
+import os
 
 def transformRow(row):
     values = row.value.decode().split(" ")
@@ -23,14 +23,20 @@ if sensor_type not in ["0", "1", "2", "3"]:
 	exit()
 
 
-STREAM_IN = 'stream-IN/sensor_type-'+sensor_type+".tmp"
+STREAM_IN = "stream-IN/"
+file_in = STREAM_IN + "sensor_type-"+sensor_type+".tmp"
 
-
+# We first delete all files from the STREAM_IN folder
+# before starting spark streaming.
+# This way, all files are new
+print("Deleting existing file in %s ..." % STREAM_IN)
+os.remove(file_in)
+print("... done")
 
 
 
 try:
-	f = open(STREAM_IN, "w")
+	f = open(file_in, "w")
 	consumer = KafkaConsumer(bootstrap_servers = ['localhost:9092'])
 	consumer.subscribe(sensor_type)
 	for row in consumer:
