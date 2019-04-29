@@ -8,3 +8,5 @@ zookeeper-3.1.14/
 
 data/data.conv.txt
 *.log
+*.pid
+*.out
