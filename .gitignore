@@ -1,0 +1,9 @@
+# kafka & zookeeper folders #
+#############################
+kafka_2.11-1.0.0/
+zookeeper-3.1.14/
+
+# data.conv.txt file #
+######################
+
+data/data.conv.txt
