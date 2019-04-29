@@ -16,8 +16,9 @@ readings = []
 municipalities = []
 
 # picked random time in scope
-#current_date = datetime.strptime("2017-03-15 00:00:00.001", "%Y-%m-%d %H:%M:%S.%f")
-current_date = datetime.strptime("2017-03-05 00:59:16.803", "%Y-%m-%d %H:%M:%S.%f")
+
+current_date = datetime.strptime("2017-02-28 00:01:19.196", "%Y-%m-%d %H:%M:%S.%f")
+#current_date = datetime.strptime("2017-03-05 00:59:16.803", "%Y-%m-%d %H:%M:%S.%f")
 
 # define data destination
 data_file = "{}/{}".format(DATA_LOCATION, SORTED_FILE)
