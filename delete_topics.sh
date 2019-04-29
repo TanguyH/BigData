@@ -1,6 +1,6 @@
 #!/bin/bash
 municipalitiesList='1000 1030 1040 1050 1060 1070 1080 1081 1082 1083 1090 1140 1150 1160 1170 1180 1190 1200 1210'
-sensorTypes='1 2 3 4'
+sensorTypes='0 1 2 3'
 SERVER_PORT=2181
 
 for municipality in $municipalitiesList; do
