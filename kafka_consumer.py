@@ -24,32 +24,35 @@ if sensor_type not in ["0", "1", "2", "3"]:
 
 
 STREAM_IN = "stream-IN/"
-file_in = STREAM_IN + "sensor_type-"+sensor_type+".tmp"
+
+struct_files = STREAM_IN + "sensor_type-"+sensor_type		#structure of the batch files for this sensor_type
 
 # We first delete all files from the STREAM_IN folder
 # before starting spark streaming.
 # This way, all files are new
 
-files = glob.glob(STREAM_IN+"/*")
-
-if file_in in files:
+files = glob.glob(struct_files+"*")
+for file in files:
 
 	print("Deleting existing file in %s ..." % STREAM_IN)
-	os.remove(file_in)
+	os.remove(file)
 	print("... done")
 
+batch_id = 0		#Increment to create different files according to each batch
+while True:
+	file_in = struct_files + "_"+str(bach_id)+ ".tmp"
 
+	try:
+		f = open(file_in, "w")
+		consumer = KafkaConsumer(bootstrap_servers = ['localhost:9092'])
+		consumer.subscribe(sensor_type)
+		for row in consumer:
+			f.write(transformRow(row))
+			f.write("\n")
 
-try:
-	f = open(file_in, "w")
-	consumer = KafkaConsumer(bootstrap_servers = ['localhost:9092'])
-	consumer.subscribe(sensor_type)
-	for row in consumer:
-		f.write(transformRow(row))
-		f.write("\n")
-
-except Exception as err:
-	print("Unexpected error: %s" % (err))
-finally:
-	consumer.close()
-	f.close()		
+	except Exception as err:
+		print("Unexpected error: %s" % (err))
+	finally:
+		consumer.close()
+		f.close()
+		batch_id += 1		
