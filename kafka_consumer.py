@@ -8,10 +8,9 @@ import os
 def transformRow(row):
     values = row.value.decode().split(" ")
     try:
-    	return row.topic + " " + values[0] + " " + values[1] + " " + values[2] + " " + values[3] + " " + values[4]
+        return row.topic + " " + values[0] + " " + values[1] + " " + values[2] + " " + values[3] + " " + values[4]
     except Exception as err:
         print("Unexpected error: %s" % (err))
-
 
 if len(sys.argv) != 2:
 	print("You must call this python file by giving a sensor type in argument")
@@ -24,7 +23,6 @@ if sensor_type not in ["0", "1", "2", "3"]:
 
 
 STREAM_IN = "stream-IN/"
-
 struct_files = STREAM_IN + "sensor_type-"+sensor_type		#structure of the batch files for this sensor_type
 
 # We first delete all files from the STREAM_IN folder
@@ -38,21 +36,26 @@ for file in files:
 	os.remove(file)
 	print("... done")
 
-batch_id = 0		#Increment to create different files according to each batch
-while True:
-	file_in = struct_files + "_"+str(batch_id)+ ".tmp"
+# initialize consumer
+consumer = KafkaConsumer(sensor_type,
+                        bootstrap_servers = ['localhost:9092'],
+                        auto_offset_reset="earliest",
+                        enable_auto_commit=True,
+                        auto_commit_interval_ms=1000)
 
-	try:
-		f = open(file_in, "w")
-		consumer = KafkaConsumer(bootstrap_servers = ['localhost:9092'])
-		consumer.subscribe(sensor_type)
-		for row in consumer:
-			f.write(transformRow(row))
-			f.write("\n")
+# initialize first batch ID & consume flag
+consuming = True
+while consuming:
+    file_in = "{}.tmp".format(struct_files)
+    f = open(file_in, "w")
+    try:
+        for row in consumer:
+            f.write("{}\n".format(transformRow(row)))
 
-	except Exception as err:
-		print("Unexpected error: %s" % (err))
-	finally:
-		consumer.close()
-		f.close()
-		batch_id += 1		
+    except KeyboardInterrupt as err:
+        print("LOG: Terminating consumer execution for {}".format(sensor_type))
+        consuming = False
+    finally:
+        print("LOG: closing consumer {} down".format(sensor_type))
+        consumer.close()
+        f.close()
