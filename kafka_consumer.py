@@ -45,8 +45,6 @@ try:
 	consumer = KafkaConsumer(bootstrap_servers = ['localhost:9092'])
 	consumer.subscribe(sensor_type)
 	for row in consumer:
-
-		row = next(consumer)
 		f.write(transformRow(row))
 		f.write("\n")
 
