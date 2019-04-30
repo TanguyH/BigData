@@ -8,7 +8,7 @@ import os
 def transformRow(row):
     values = row.value.decode().split(" ")
     try:
-    	return row.topic + " " + values[0] + " " + values[1] + " " + values[2] + " " + values[3] + " " + values[4]
+    	return row.topic + " " + values[0] + " " + values[1] + " " + values[2] + " " + values[3] + " " + values[4] + " " + values[5]
     except Exception as err:
         print("Unexpected error: %s" % (err))
 
@@ -47,6 +47,7 @@ while True:
 		consumer = KafkaConsumer(bootstrap_servers = ['localhost:9092'])
 		consumer.subscribe(sensor_type)
 		for row in consumer:
+			print(row)
 			f.write(transformRow(row))
 			f.write("\n")
 
