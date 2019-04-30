@@ -25,7 +25,7 @@ filestream = ssc.textFileStream(STREAM_IN) #monitor new files in folder stream-I
 def parseRow(row):
     '''parses a single row into a dictionary'''
     #print("test")
-    
+
     try:
         v = row.split(" ")
         return [{"topic": int(v[0]),
@@ -58,8 +58,8 @@ def checkAttributes(sensor_type, space_tag, time_tag):
         return False
     else:
         return True
-    
-    
+
+
 def updateMax(current_max, state_max):
     """
     current_max: record containing the maximum value in the current batch
@@ -88,8 +88,23 @@ def updateMin(current_min, state_min):
     else:
         return min(current_min[0]["measurement"], state_min)
 
+def updateMean(current, state):
+    current_mean, current_count = current[0], current[1]
+    state_mean, state_count = state[0], state[1]
+
+    if len(current_mean) == 0:
+        if state_mean is None:
+            return (None, None)
+        else:
+            return state_mean
+    if state_mean is None:
+        return (current_mean[0]["measurement"], current_count)
+    else:
+        total_count = current_count + state_count
+        return (current_mean[0]["measurement"] * (current_count / total_count) + state_mean * (state_count/total_count), total_count)
+
 def basicStats(space_tag, time_tag):
-    
+
     #filestream = ssc.textFileStream(STREAM_IN)
     #print(filestream)
     rows = filestream.flatMap(parseRow)
@@ -100,11 +115,11 @@ def basicStats(space_tag, time_tag):
     if space_tag == 0: #Group per place
         group_space = rows.map(lambda r: ((r["topic"],["p-i"].split("-")[0]), r))
         #key = (sensor_type, place), value = row
-        
+
     elif space_tag == 1: #Group per municipality
         group_space = rows.map(lambda r: ((r["topic"],["municipality"]), r))
         #key = (sensor_type, municipality), value = row
-        
+
     else:                #Group for Brussels
         group_space = rows.map(lambda r: ((r["topic"]), r))
         #key = (sensor_type), value = row
@@ -119,37 +134,40 @@ def basicStats(space_tag, time_tag):
     if time_tag == 0:   #Last 24h
         d1 = relativedelta(days=1)
         group_time = group_space.filter(lambda r: d1 + r[1]["time"] > current_time)
-        
+
     elif time_tag == 1:  #Last 48h
         d2 = relativedelta(days=2)
         group_time = group_space.filter(lambda r: d2 + r[1]["time"] > current_time)
-        
+
     elif time_tag == 2:  #Last week
         w1 = relativedelta(weeks=1)
         group_time = group_space.filter(lambda r: w1 + r[1]["time"] > current_time)
-        
+
     elif time_tag == 3:  #Last month
         m1 = relativedelta(months=1)
         group_time = group_space.filter(lambda r: m1 + r[1]["time"] > current_time)
-        
+
     else:                #Last year
         y1 = relativedelta(years=1)
         group_time = group_space.filter(lambda r: y1 + r[1]["time"] > current_time)
-        
+
     print("max")
     max_by_group_batch = group_time.reduceByKey(lambda r1, r2: max(r1, r2, key=lambda r: r["measurement"]))
     print("min")
     min_by_group_batch = group_time.reduceByKey(lambda r1, r2: min(r1, r2, key=lambda r: r["measurement"]))
     print("mean")
-    mean_by_group_batch = group_time.transform(lambda rdd: rdd.aggregateByKey((0,0), 
+    mean_by_group_batch = group_time.transform(lambda rdd: rdd.aggregateByKey((0,0),
                     lambda acc1, value: (acc1[0] + value["measurement"]   , acc1[1] + 1   ),
                     lambda acc1, acc2: (acc1[0] + acc2[0], acc1[1] + acc2[1]) )\
                     .mapValues(lambda v: v[0]/v[1]) \
                     .sortBy(lambda pair: pair[1], False))
-
+    elements_in_batch = mean_by_group_batch.count()
+    print("elements_in_batch : {}".format(elements_in_batch))
     max_by_group = max_by_group_batch.updateStateByKey(updateMax)
 
     min_by_group = min_by_group_batch.updateStateByKey(updateMin)
+
+    #mean_by_group = mean_by_group_batch.updateStateByKey(updateMean)
 
 
     #print(max_by_group.collect())
@@ -157,6 +175,7 @@ def basicStats(space_tag, time_tag):
     max_by_group.pprint()
     min_by_group.pprint()
     mean_by_group_batch.pprint()
+    #mean_by_group.pprint()
     # set the spark checkpoint
     # folder to the subfolder of the current folder named "checkpoint"
     sc.setCheckpointDir("checkpoint")
