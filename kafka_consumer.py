@@ -40,7 +40,7 @@ for file in files:
 
 batch_id = 0		#Increment to create different files according to each batch
 while True:
-	file_in = struct_files + "_"+str(bach_id)+ ".tmp"
+	file_in = struct_files + "_"+str(batch_id)+ ".tmp"
 
 	try:
 		f = open(file_in, "w")
