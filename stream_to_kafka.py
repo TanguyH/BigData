@@ -86,7 +86,6 @@ try:
 
             topic = "{}".format(loc_sensor_type)
             producer.send(topic, "{} {}".format(readings[i], loc_municipality).encode())
-            #producer.send(topic, [readings[i].encode(), loc_municipality])
 
         print("LOG: sent 1s interval data")
 
