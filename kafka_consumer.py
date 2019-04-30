@@ -4,6 +4,9 @@ from kafka.errors import KafkaError
 from pathlib import Path
 import glob
 import os
+import time
+
+BATCH_TIME = 30
 
 def transformRow(row):
     values = row.value.decode().split(" ")
@@ -45,11 +48,24 @@ consumer = KafkaConsumer(sensor_type,
 
 # initialize first batch ID & consume flag
 consuming = True
+batch_id = 0
 while consuming:
-    file_in = "{}.tmp".format(struct_files)
+    file_in = "{}_{}.tmp".format(struct_files, batch_id)
     f = open(file_in, "w")
+    checkpoint = time.time()
     try:
         for row in consumer:
+
+            # handle files
+            if time.time() > checkpoint + BATCH_TIME:
+                # handle closing
+                f.close()
+                batch_id += 1
+
+                file_in = "{}_{}.tmp".format(struct_files, batch_id)
+                f = open(file_in, "w")
+                checkpoint = time.time()
+
             f.write("{}\n".format(transformRow(row)))
 
     except KeyboardInterrupt as err:
