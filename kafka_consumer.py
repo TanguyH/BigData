@@ -29,9 +29,14 @@ file_in = STREAM_IN + "sensor_type-"+sensor_type+".tmp"
 # We first delete all files from the STREAM_IN folder
 # before starting spark streaming.
 # This way, all files are new
-print("Deleting existing file in %s ..." % STREAM_IN)
-os.remove(file_in)
-print("... done")
+
+files = glob.glob(STREAM_IN+"/*")
+
+if file_in in files:
+
+	print("Deleting existing file in %s ..." % STREAM_IN)
+	os.remove(file_in)
+	print("... done")
 
 
 
