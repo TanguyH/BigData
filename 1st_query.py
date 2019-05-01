@@ -148,13 +148,13 @@ def basicStats(space_tag, time_tag):
         window_time = 60*60*24*365.25
 
 
-    max_by_group_batch = group_space.reduceByKey(lambda r1, r2: max(r1, r2, key=lambda r: r["measurement"])).window(window_time, 15)
-    min_by_group_batch = group_space.reduceByKey(lambda r1, r2: min(r1, r2, key=lambda r: r["measurement"])).window(window_time, 15)
+    max_by_group_batch = group_space.reduceByKey(lambda r1, r2: max(r1, r2, key=lambda r: r["measurement"])).window(window_time, 10)
+    min_by_group_batch = group_space.reduceByKey(lambda r1, r2: min(r1, r2, key=lambda r: r["measurement"])).window(window_time, 10)
     #We get basic stats for each batch within the window
 
 
-    max_by_group_window = max_by_group_batch.reduceByKey(lambda r1, r2: max(r1, r2, key=lambda r: r["measurement"]))
-    min_by_group_window = min_by_group_batch.reduceByKey(lambda r1, r2: min(r1, r2, key=lambda r: r["measurement"]))
+    max_by_group_window = max_by_group_batch.reduceByKey(lambda r1, r2: max(r1, r2, key=lambda r: r["measurement"])).map(lambda r: (r[0],r[1]["measurement"]))
+    min_by_group_window = min_by_group_batch.reduceByKey(lambda r1, r2: min(r1, r2, key=lambda r: r["measurement"])).map(lambda r: (r[0],r[1]["measurement"]))
 
     #Get the basic stats from the selected elements from the batchs that are in the window
 
@@ -165,19 +165,13 @@ def basicStats(space_tag, time_tag):
                     lambda acc1, acc2: (acc1[0] + acc2[0], acc1[1] + acc2[1]) )\
                     .mapValues(lambda v: (v[0]/v[1], v[1])) \
                     .sortBy(lambda pair: pair[1], False)
-                    ).window(window_time,15).reduceByKey(lambda r1, r2: ( (r1[0]*r1[1]+r2[0]*r2[1])/(r1[1]+r2[1]), (r1[1]+r2[1]) ))
+                    ).window(window_time,10).reduceByKey(lambda r1, r2: ( (r1[0]*r1[1]+r2[0]*r2[1])/(r1[1]+r2[1]), (r1[1]+r2[1]) ))
 
 
-    max_by_group = max_by_group_window.updateStateByKey(updateMax)
 
-    min_by_group = min_by_group_window.updateStateByKey(updateMin)
-
-    mean_by_group = mean_by_group_window.updateStateByKey(updateMean)
-
-
-    max_by_group.pprint()
-    min_by_group.pprint()
-    mean_by_group.pprint()
+    max_by_group_window.pprint()
+    min_by_group_window.pprint()
+    mean_by_group_window.pprint()
     # set the spark checkpoint
     # folder to the subfolder of the current folder named "checkpoint"
     sc.setCheckpointDir("checkpoint")
@@ -185,6 +179,6 @@ def basicStats(space_tag, time_tag):
     ssc.awaitTermination()
 
 
-basicStats(0,0)
+basicStats(2,0)
 #volumePerClient = orders.map(lambda o: (o['clientId'], o['amount'] * o['price']))
 #volumeState = volumePerClient.updateStateByKey(lambda vals, totalOpt: sum(vals) + totalOpt if totalOpt != None else sum(vals))
