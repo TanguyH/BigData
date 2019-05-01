@@ -9,6 +9,7 @@ from kafka import KafkaConsumer
 from kafka.errors import KafkaError
 from pyspark.sql.types import *
 from pyspark.sql import SparkSession
+import pandas as pd
 
 STREAM_IN = "stream-IN"
 print("Deleting existing files in %s ..." % STREAM_IN)
@@ -39,7 +40,10 @@ df.show()
 curr_df = df.toPandas()
 curr_df.to_csv("data/db/dayum.csv")
 #df.select("time", "min", "max", "avg").write.save("data/db/new_stats.json", format="json")
-curr_df.append({'time' : 0, 'min' : 1, 'max' : 2,' avg' : 3}, ignore_index=True)
+
+other_df = pd.DataFrame([[1, 2, 3, 4]], columns = ["time", "min", "max", "avg"])
+curr_df = curr_df.append(other_df, ignore_index=True)
+print(curr_df)
 
 with open("data/db/dayum.csv", 'a') as f:
     curr_df.to_csv(f, header=False)
