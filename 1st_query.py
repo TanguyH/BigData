@@ -89,19 +89,20 @@ def updateMin(current_min, state_min):
         return min(current_min[0]["measurement"], state_min)
 
 def updateMean(current, state):
-    current_mean, current_count = current[0], current[1]
-    state_mean, state_count = state[0], state[1]
 
-    if len(current_mean) == 0:
-        if state_mean is None:
+    if len(current) == 0:       #Did not read anything from the stream (batch empty)
+        if state is None or state is (None, None):      #if state was not initialized yet OR was already initialized with empty batch
             return (None, None)
         else:
-            return state_mean
-    if state_mean is None:
-        return (current_mean[0]["measurement"], current_count)
-    else:
+            return state
+
+    current_mean, current_count = current[0][0], current[0][1]
+    if state is None or state is (None,None):      #If we read something from the stream for the first time
+        return (current_mean, current_count)
+    else:                                               #Update the total avg
+        state_mean, state_count = state[0], state[1]
         total_count = current_count + state_count
-        return (current_mean[0]["measurement"] * (current_count / total_count) + state_mean * (state_count/total_count), total_count)
+        return ((current_mean * current_count + state_mean *state_count)/total_count, total_count)
 
 def basicStats(space_tag, time_tag):
 
@@ -113,11 +114,11 @@ def basicStats(space_tag, time_tag):
     #rows.pprint()
     #print(rows.pprint())
     if space_tag == 0: #Group per place
-        group_space = rows.map(lambda r: ((r["topic"],["p-i"].split("-")[0]), r))
+        group_space = rows.map(lambda r: ((r["topic"],r["p-i"].split("-")[0]), r))
         #key = (sensor_type, place), value = row
 
     elif space_tag == 1: #Group per municipality
-        group_space = rows.map(lambda r: ((r["topic"],["municipality"]), r))
+        group_space = rows.map(lambda r: ((r["topic"],r["municipality"]), r))
         #key = (sensor_type, municipality), value = row
 
     else:                #Group for Brussels
@@ -132,50 +133,51 @@ def basicStats(space_tag, time_tag):
     #current_time.pprint()
     current_time = datetime.strptime("2017-02-28 00:09:19.196", "%Y-%m-%d %H:%M:%S.%f") #As in stream_to_kafka file
     if time_tag == 0:   #Last 24h
-        d1 = relativedelta(days=1)
-        group_time = group_space.filter(lambda r: d1 + r[1]["time"] > current_time)
+        window_time = 60*60*24
 
     elif time_tag == 1:  #Last 48h
-        d2 = relativedelta(days=2)
-        group_time = group_space.filter(lambda r: d2 + r[1]["time"] > current_time)
+        window_time = 60*60*48
 
     elif time_tag == 2:  #Last week
-        w1 = relativedelta(weeks=1)
-        group_time = group_space.filter(lambda r: w1 + r[1]["time"] > current_time)
+        window_time = 60*60*24*7
 
     elif time_tag == 3:  #Last month
-        m1 = relativedelta(months=1)
-        group_time = group_space.filter(lambda r: m1 + r[1]["time"] > current_time)
+        window_time = 60*60*24*30.4375 
 
     else:                #Last year
-        y1 = relativedelta(years=1)
-        group_time = group_space.filter(lambda r: y1 + r[1]["time"] > current_time)
+        window_time = 60*60*24*365.25
 
-    print("max")
-    max_by_group_batch = group_time.reduceByKey(lambda r1, r2: max(r1, r2, key=lambda r: r["measurement"]))
-    print("min")
-    min_by_group_batch = group_time.reduceByKey(lambda r1, r2: min(r1, r2, key=lambda r: r["measurement"]))
-    print("mean")
-    mean_by_group_batch = group_time.transform(lambda rdd: rdd.aggregateByKey((0,0),
+
+    max_by_group_batch = group_space.reduceByKey(lambda r1, r2: max(r1, r2, key=lambda r: r["measurement"])).window(window_time, 15)
+    min_by_group_batch = group_space.reduceByKey(lambda r1, r2: min(r1, r2, key=lambda r: r["measurement"])).window(window_time, 15)
+    #We get basic stats for each batch within the window
+
+
+    max_by_group_window = max_by_group_batch.reduceByKey(lambda r1, r2: max(r1, r2, key=lambda r: r["measurement"]))
+    min_by_group_window = min_by_group_batch.reduceByKey(lambda r1, r2: min(r1, r2, key=lambda r: r["measurement"]))
+
+    #Get the basic stats from the selected elements from the batchs that are in the window
+
+
+
+    mean_by_group_window = group_space.transform(lambda rdd: rdd.aggregateByKey((0,0),
                     lambda acc1, value: (acc1[0] + value["measurement"]   , acc1[1] + 1   ),
                     lambda acc1, acc2: (acc1[0] + acc2[0], acc1[1] + acc2[1]) )\
-                    .mapValues(lambda v: v[0]/v[1]) \
-                    .sortBy(lambda pair: pair[1], False))
-    elements_in_batch = mean_by_group_batch.count()
-    print("elements_in_batch : {}".format(elements_in_batch))
-    max_by_group = max_by_group_batch.updateStateByKey(updateMax)
-
-    min_by_group = min_by_group_batch.updateStateByKey(updateMin)
-
-    #mean_by_group = mean_by_group_batch.updateStateByKey(updateMean)
+                    .mapValues(lambda v: (v[0]/v[1], v[1])) \
+                    .sortBy(lambda pair: pair[1], False)
+                    ).window(window_time,15).reduceByKey(lambda r1, r2: ( (r1[0]*r1[1]+r2[0]*r2[1])/(r1[1]+r2[1]), (r1[1]+r2[1]) ))
 
 
-    #print(max_by_group.collect())
-    #print(min_by_group.collect())
+    max_by_group = max_by_group_window.updateStateByKey(updateMax)
+
+    min_by_group = min_by_group_window.updateStateByKey(updateMin)
+
+    mean_by_group = mean_by_group_window.updateStateByKey(updateMean)
+
+
     max_by_group.pprint()
     min_by_group.pprint()
-    mean_by_group_batch.pprint()
-    #mean_by_group.pprint()
+    mean_by_group.pprint()
     # set the spark checkpoint
     # folder to the subfolder of the current folder named "checkpoint"
     sc.setCheckpointDir("checkpoint")
