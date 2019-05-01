@@ -7,6 +7,9 @@ from dateutil.relativedelta import relativedelta
 from pathlib import Path
 from kafka import KafkaConsumer
 from kafka.errors import KafkaError
+from pyspark.sql.types import *
+from pyspark.sql import SparkSession
+
 STREAM_IN = "stream-IN"
 print("Deleting existing files in %s ..." % STREAM_IN)
 p = Path('.') / STREAM_IN
@@ -21,6 +24,25 @@ ssc = StreamingContext(sc, 5)  #generate a mini-batch every 5 seconds
 filestream = ssc.textFileStream(STREAM_IN) #monitor new files in folder stream-IN
 #print(filestream)
 #text_file = sc.textFile("hdfs://stream-IN/sensor_type-0_0.tmp")
+
+spark = SparkSession.builder.appName("Dash").getOrCreate()
+
+stats = sc.textFile("data/db/stats.txt")
+statistics = stats.map(lambda p: Row(time=p[0], min=p[1], max=p[2], avg=p[3]))
+
+schemaString = "time min max avg"
+fields = [StructField(field_name, StringType(), True) for field_name in schemaString.split()]
+schema = StructType(fields)
+
+df = spark.createDataFrame(statistics, schema)#.show()
+df.show()
+curr_df = df.toPandas()
+curr_df.to_csv("data/db/dayum.csv")
+#df.select("time", "min", "max", "avg").write.save("data/db/new_stats.json", format="json")
+curr_df.append({'time' : 0, 'min' : 1, 'max' : 2,' avg' : 3}, ignore_index=True)
+
+with open("data/db/dayum.csv", 'a') as f:
+    curr_df.to_csv(f, header=False)
 
 def parseRow(row):
     '''parses a single row into a dictionary'''
@@ -142,7 +164,7 @@ def basicStats(space_tag, time_tag):
         window_time = 60*60*24*7
 
     elif time_tag == 3:  #Last month
-        window_time = 60*60*24*30.4375 
+        window_time = 60*60*24*30.4375
 
     else:                #Last year
         window_time = 60*60*24*365.25
