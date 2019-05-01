@@ -38,16 +38,15 @@ def parseRow(row):
         print("Unexpected error: %s" % (err))
 
 
-def checkAttributes(sensor_type, space_tag, time_tag):
-    if sensor_type < 0 or sensor_type > 3:
-        print("Sensor type value is not supported. Give a value in [0,3]")
-        return False
-    elif space_tag < 0 or space_tag > 2:
+def checkAttributes(space_tag, time_tag):
+
+    if space_tag < 0 or space_tag > 2:
         print("Space tag value is not supported. Give a value in [0,2].")
         print("0: grouped per space")
         print("1: grouped per municipality")
         print("2: grouped for the entirety of Brussels")
-        return False
+        exit()
+        #return False
     elif time_tag <0 or time_tag > 4:
         print("Time tag value is not supported. Give a value in [0,4].")
         print("0: last 24h")
@@ -55,7 +54,8 @@ def checkAttributes(sensor_type, space_tag, time_tag):
         print("2: last week")
         print("3: last month")
         print("4: last year")
-        return False
+        exit()
+        #return False
     else:
         return True
 
@@ -105,7 +105,7 @@ def updateMean(current, state):
         return ((current_mean * current_count + state_mean *state_count)/total_count, total_count)
 
 def basicStats(space_tag, time_tag):
-
+    checkAttributes(space_tag, time_tag)
     #filestream = ssc.textFileStream(STREAM_IN)
     #print(filestream)
     rows = filestream.flatMap(parseRow)
@@ -185,6 +185,6 @@ def basicStats(space_tag, time_tag):
     ssc.awaitTermination()
 
 
-basicStats(2,0)
+basicStats(0,0)
 #volumePerClient = orders.map(lambda o: (o['clientId'], o['amount'] * o['price']))
 #volumeState = volumePerClient.updateStateByKey(lambda vals, totalOpt: sum(vals) + totalOpt if totalOpt != None else sum(vals))
