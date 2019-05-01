@@ -31,7 +31,7 @@ locations = open(location_file, "r")
 for location in locations.readlines():
     location = location.strip()
     location_id, location_municipality, location_privacy = location.split(" ")
-    municipalities.append(location_municipality)
+    municipalities.append(location_municipality+" "+ location_privacy)
 
 locations.close()
 

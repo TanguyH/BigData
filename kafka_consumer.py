@@ -11,7 +11,7 @@ BATCH_TIME = 30
 def transformRow(row):
     values = row.value.decode().split(" ")
     try:
-    	return row.topic + " " + values[0] + " " + values[1] + " " + values[2] + " " + values[3] + " " + values[4] + " " + values[5]
+    	return row.topic + " " + values[0] + " " + values[1] + " " + values[2] + " " + values[3] + " " + values[4] + " " + values[5] + " "+ values[6]
 
     except Exception as err:
         print("Unexpected error: %s" % (err))
