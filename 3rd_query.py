@@ -45,7 +45,7 @@ DB_NAME = "big_data"
 mongo_client = pymongo.MongoClient("mongodb://localhost:27017")
 used_database = mongo_client[DB_NAME]
 db_list = mongo_client.list_database_names()
-window = used_database["window"]  #Collection top_frequency
+window_collection = used_database["window"]  #Collection top_frequency
 
 
 
@@ -82,7 +82,7 @@ schema = StructType([
 
 
 window_time = 60*60 #one hour
-window_slide = 15   #15sec
+window_slide = 10   #15sec
 freq_tresh = 1./20
 rows = filestream.flatMap(parseRow).filter(lambda r: int(r["p-i"].split("-")[1]) == 0)      #Get only the temperature sensors
 
@@ -102,7 +102,7 @@ top_freq_date = top_freq.transformWith(lambda rdd1, rdd2: rdd1.cartesian(rdd2),l
                                 .map(lambda r: (r[0][0], r[0][1], r[1]))
 
 top_freq_date.pprint()
-top_freq_date.foreachRDD(lambda rdd: storeRdd(rdd, my_spark, schema, window))
+top_freq_date.foreachRDD(lambda rdd: storeRdd(rdd, my_spark, schema, window_collection))
 
 sc.setCheckpointDir("checkpoint")
 ssc.start()

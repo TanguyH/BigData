@@ -161,7 +161,7 @@ def storeRdd(rdd, spark_session, schema, collection):
         collection.insert_many(info_batch.toPandas().to_dict('records'))
     print("storedRdd")
 
-rows = filestream.flatMap(parseRow)
+rows = filestream.flatMap(parseRow).filter(lambda r: int(r["p-i"].split("-")[1]) == 0)
 
 #rows.pprint()
 rows.foreachRDD(lambda rdd: storeRdd(rdd, my_spark, schema, timeslots))
