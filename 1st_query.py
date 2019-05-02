@@ -50,10 +50,22 @@ my_spark = SparkSession \
     .getOrCreate()
 
 statistics = used_database["statistics"]
-stats = my_spark.createDataFrame([("time 3", 3, 3, 3), ("time 4", 4, 4, 4), ("time 5", 5, 5, 5)], ["time", "min", "max", "avg"])
+
+import random
+inputs = []
+
+for i in range(100):
+    min, max = random.random(), random.random()
+    if max < min:
+        min, max = max, min
+    avg = (min + max) / 2
+    sensor_type = random.randint(0,3)
+    inputs.append(("time {}".format(i), min, max, avg, sensor_type))
+
+stats = my_spark.createDataFrame(inputs, ["time", "min", "max", "avg", "type"])
 statistics.insert_many(stats.toPandas().to_dict('records'))
 
-
+exit()
 
 def parseRow(row):
     '''parses a single row into a dictionary'''
