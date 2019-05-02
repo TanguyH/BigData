@@ -13,6 +13,7 @@ import pandas as pd
 import pymongo
 
 
+
 def parseRow(row):
     '''parses a single row into a dictionary'''
     #print("test")
