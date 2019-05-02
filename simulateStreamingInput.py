@@ -19,13 +19,10 @@ destinationFolder = scriptPath.parent / STREAM_IN
 
 # we will process the files sorted on the file name
 files = splitDataFolder.glob("*.tmp")
-print(files)
 
 # files that already exist in the destination folder are skipped
 existingFiles = [x.name for x in destinationFolder.glob("*.tmp")]
-print(existingFiles)
 files = [x for x in files if x.name not in existingFiles]
-print(files)
 
 try:
     # process files in sorted order
