@@ -1,5 +1,5 @@
 from pyspark import SparkContext, SparkConf
-from pyspark.streaming import StreamingContext, DStream
+from pyspark.streaming import StreamingContext
 import sys
 import os
 from datetime import datetime, time, timedelta
@@ -225,6 +225,7 @@ def storeRdd(rdd, spark_session, schema, collection):
     df = info_batch.toPandas().to_dict('records')
     if df != []:
         collection.insert_many(info_batch.toPandas().to_dict('records'))
+    print("storedRdd")
 
 rows = filestream.flatMap(parseRow)
 
