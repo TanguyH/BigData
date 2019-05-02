@@ -111,7 +111,7 @@ DB_NAME = "big_data"
 mongo_client = pymongo.MongoClient("mongodb://localhost:27017")
 used_database = mongo_client[DB_NAME]
 db_list = mongo_client.list_database_names()
-slots_splits = used_database["slot_splits"]
+timeslots = used_database["timeslots"]
 
 # verify existence of DB
 if DB_NAME in db_list:
@@ -164,7 +164,7 @@ def storeRdd(rdd, spark_session, schema, collection):
 rows = filestream.flatMap(parseRow)
 
 #rows.pprint()
-rows.foreachRDD(lambda rdd: storeRdd(rdd, my_spark, schema, slots_splits))
+rows.foreachRDD(lambda rdd: storeRdd(rdd, my_spark, schema, timeslots))
 
 ssc.start()
 ssc.awaitTermination()
