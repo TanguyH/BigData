@@ -10,6 +10,7 @@ from kafka.errors import KafkaError
 from pyspark.sql.types import *
 from pyspark.sql import SparkSession
 import pandas as pd
+import pymongo
 
 STREAM_IN = "stream-IN"
 print("Deleting existing files in %s ..." % STREAM_IN)
@@ -26,6 +27,8 @@ filestream = ssc.textFileStream(STREAM_IN) #monitor new files in folder stream-I
 #print(filestream)
 #text_file = sc.textFile("hdfs://stream-IN/sensor_type-0_0.tmp")
 
+# reg
+"""
 spark = SparkSession.builder.appName("Dash").getOrCreate()
 
 stats = sc.textFile("data/db/stats.txt")
@@ -47,6 +50,47 @@ print(curr_df)
 
 with open("data/db/dayum.csv", 'a') as f:
     curr_df.to_csv(f, header=False)
+"""
+
+# test on pymongo
+# declare database
+DB_NAME = "big_data"
+
+# define client & used DB
+mongo_client = pymongo.MongoClient("mongodb://localhost:27017")
+used_database = mongo_client[DB_NAME]
+db_list = mongo_client.list_database_names()
+
+# verify existence of DB
+if DB_NAME in db_list:
+    print("Database exists")
+else:
+    print("Database does not exist, BUT if it is empty it is normal !")
+
+# add column to DB
+my_spark = SparkSession \
+    .builder \
+    .appName("myApp") \
+    .getOrCreate()
+
+statistics = used_database["statistics"]
+stats = my_spark.createDataFrame([("time 3", 3, 3, 3), ("time 4", 4, 4, 4), ("time 5", 5, 5, 5)], ["time", "min", "max", "avg"])
+statistics.insert_many(stats.toPandas().to_dict('records'))
+
+"""
+my_spark = SparkSession \
+    .builder \
+    .appName("myApp") \
+    .config("spark.mongodb.input.uri", "mongodb://127.0.0.1/big_data.statistics") \
+    .config("spark.mongodb.output.uri", "mongodb://127.0.0.1/big_data.statistics") \
+    .getOrCreate()
+
+stats = my_spark.createDataFrame([("time 1", 0, 0, 0), ("time 1", 1, 1, 1), ("time 1", 2, 2, 2)], ["time", "min", "max", "avg"])
+stats.show()
+
+stats.write.format("com.mongodb.spark.sql.DefaultSource").mode("append").save()
+#stats.write.format("spark.mongodb.output.uri").mode("append").save()
+"""
 
 def parseRow(row):
     '''parses a single row into a dictionary'''
