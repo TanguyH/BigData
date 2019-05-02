@@ -27,30 +27,6 @@ filestream = ssc.textFileStream(STREAM_IN) #monitor new files in folder stream-I
 #print(filestream)
 #text_file = sc.textFile("hdfs://stream-IN/sensor_type-0_0.tmp")
 
-# reg
-"""
-spark = SparkSession.builder.appName("Dash").getOrCreate()
-
-stats = sc.textFile("data/db/stats.txt")
-statistics = stats.map(lambda p: Row(time=p[0], min=p[1], max=p[2], avg=p[3]))
-
-schemaString = "time min max avg"
-fields = [StructField(field_name, StringType(), True) for field_name in schemaString.split()]
-schema = StructType(fields)
-
-df = spark.createDataFrame(statistics, schema)#.show()
-df.show()
-curr_df = df.toPandas()
-curr_df.to_csv("data/db/dayum.csv")
-#df.select("time", "min", "max", "avg").write.save("data/db/new_stats.json", format="json")
-
-other_df = pd.DataFrame([[1, 2, 3, 4]], columns = ["time", "min", "max", "avg"])
-curr_df = curr_df.append(other_df, ignore_index=True)
-print(curr_df)
-
-with open("data/db/dayum.csv", 'a') as f:
-    curr_df.to_csv(f, header=False)
-"""
 
 # test on pymongo
 # declare database
@@ -77,20 +53,7 @@ statistics = used_database["statistics"]
 stats = my_spark.createDataFrame([("time 3", 3, 3, 3), ("time 4", 4, 4, 4), ("time 5", 5, 5, 5)], ["time", "min", "max", "avg"])
 statistics.insert_many(stats.toPandas().to_dict('records'))
 
-"""
-my_spark = SparkSession \
-    .builder \
-    .appName("myApp") \
-    .config("spark.mongodb.input.uri", "mongodb://127.0.0.1/big_data.statistics") \
-    .config("spark.mongodb.output.uri", "mongodb://127.0.0.1/big_data.statistics") \
-    .getOrCreate()
 
-stats = my_spark.createDataFrame([("time 1", 0, 0, 0), ("time 1", 1, 1, 1), ("time 1", 2, 2, 2)], ["time", "min", "max", "avg"])
-stats.show()
-
-stats.write.format("com.mongodb.spark.sql.DefaultSource").mode("append").save()
-#stats.write.format("spark.mongodb.output.uri").mode("append").save()
-"""
 
 def parseRow(row):
     '''parses a single row into a dictionary'''
