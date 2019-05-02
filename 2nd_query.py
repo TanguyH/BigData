@@ -30,8 +30,8 @@ def parseRow(row):
                 "time": date_time,
                 "slot": slot,
                 "p-i": v[3],
-                "voltage": float(v[5]),
                 "measurement":float(v[4]),
+                "voltage": float(v[5]),
                 "municipality": v[6],
                 "type_space": v[7]}]
 
@@ -145,8 +145,8 @@ schema = StructType([
     StructField("time",TimestampType(), True),
     StructField("slot",IntegerType(), True),
     StructField("p-i",StringType(), True),
-    StructField("voltage",FloatType(), True),
     StructField("measurement",FloatType(), True),
+    StructField("voltage",FloatType(), True),
     StructField("municipality",StringType(), True),
     StructField("type_space",StringType(), True),
 
