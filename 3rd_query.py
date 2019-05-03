@@ -90,13 +90,25 @@ last_time = rows.map(lambda r:(r["time"])).reduce(lambda r1, r2: max(r1, r2))   
 
 num_per_value = rows.map(lambda r: (r["measurement"])).countByValue().window(window_time,window_slide)  #Last hour, window slide = 15sec
 
+num_distinct_value = num_per_value.count()  
+
 num_per_value.pprint()
 total_count = rows.count().window(window_time,window_slide).reduce(add)        #Get the total number of record within the window -> to compute relative frequencies
 
-freq_per_value = num_per_value.transformWith(lambda rdd1, rdd2: rdd1.cartesian(rdd2),total_count)\
-                                .map(lambda r: (r[0][0], r[0][1]/r[1]))
 
-top_freq = freq_per_value.transform(lambda rdd: rdd.sortBy(lambda r: r[1], False)).filter(lambda r: r[1] > freq_tresh)
+#Store (measurement, frequency, total number of measurementw in window)
+freq_per_value = num_per_value.transformWith(lambda rdd1, rdd2: rdd1.cartesian(rdd2),total_count)\
+                                .map(lambda r: (r[0][0], r[0][1]/r[1], r[1]))
+
+
+#Store (measurement, frequency, distinct number of measurements in window)
+freq_per_value_and_counts = freq_per_value.transformWith(lambda rdd1, rdd2: rdd1.cartesian(rdd2),num_distinct_value)\
+                                .map(lambda r: (r[0][0], r[0][1], r[1]))
+
+#Sort the frequencies and keep only those which are higher than the freq threshold
+#Freq threshold depends on the number of distinct number of measurements in window
+#To ensure that there is a consistency in both the cases where there is less/more than 1h hour of stream (window of 1h is already full or not)
+top_freq = freq_per_value_and_counts.transform(lambda rdd: rdd.sortBy(lambda r: r[1], False)).filter(lambda r: r[1] > 1/r[2])
 
 top_freq_date = top_freq.transformWith(lambda rdd1, rdd2: rdd1.cartesian(rdd2),last_time)\
                                 .map(lambda r: (r[0][0], r[0][1], r[1]))
