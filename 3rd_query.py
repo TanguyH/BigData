@@ -23,8 +23,7 @@ def parseRow(row):
                  "time": datetime.strptime(v[1] + " "+ v[2], "%Y-%m-%d %H:%M:%S.%f"),
                  "p-i": v[3],
                  "measurement": round(float(v[4]),1),       #rounded precision to 1 digit (follow the requirements)
-                 "voltage": float(v[5]),
-                "municipality": v[6]}]
+                 "voltage": float(v[5])}]
     except Exception as err:
         print("Unexpected error: %s" % (err))
 
