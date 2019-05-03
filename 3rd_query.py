@@ -61,7 +61,7 @@ for f in p.glob("*.tmp"):
 print("... done")
 sc = SparkContext("local[*]", "test")
 sc.setLogLevel("WARN")   #Make sure warnings and errors observed by spark are printed.
-ssc = StreamingContext(sc, 5)  #generate a mini-batch every 5 seconds
+ssc = StreamingContext(sc, 30)  #generate a mini-batch every 30 seconds
 
 filestream = ssc.textFileStream(STREAM_IN) #monitor new files in folder stream-IN
 
@@ -80,7 +80,7 @@ schema = StructType([
 
 
 window_time = 60*60 #one hour
-window_slide = 10   #15sec
+window_slide = 30   #30sec
 rows = filestream.flatMap(parseRow).filter(lambda r: int(r["p-i"].split("-")[1]) == 0)      #Get only the temperature sensors
 
 last_time = rows.map(lambda r:(r["time"])).reduce(lambda r1, r2: max(r1, r2))       #Last time object of the batch

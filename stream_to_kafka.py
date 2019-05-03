@@ -34,7 +34,9 @@ sorted_info = open(data_file, "r")
 #    municipalities.append(location_municipality+" "+ location_privacy)
 
 #locations.close()
+info_lines = sorted_info.readlines()
 
+"""
 # unpack all data
 for sensor_reading in sorted_info.readlines():
     sensor_reading = sensor_reading.strip()
@@ -68,17 +70,55 @@ while not reached_current_date:
         reached_current_date = True
     else:
         curr_start += 1
-
+"""
 print("LOG: past data identified")
 
-second = timedelta(seconds=1)
+second = timedelta(seconds=30)
+lines_i = 0
+sensor_reading = info_lines[lines_i].strip()
 
+record_date, record_time, sensor_id, measurement, voltage = sensor_reading.split(" ")
+location_id, sensor_type = sensor_id.split("-")
+
+# convert to datetime
+current_date = datetime.strptime("{} {}".format(record_date, record_time), "%Y-%m-%d %H:%M:%S.%f")
 try:
     producer = KafkaProducer(bootstrap_servers = ['localhost:9092'])
     all_processed = False
 
     while not all_processed:
+
+
+        next_date = current_date + second
+        reached_current_date = False
+        while not reached_current_date and not all_processed:
+            sensor_reading = info_lines[lines_i].strip()
+
+            record_date, record_time, sensor_id, measurement, voltage = sensor_reading.split(" ")
+            location_id, sensor_type = sensor_id.split("-")
+
+            # convert to datetime
+            explored_date = datetime.strptime("{} {}".format(record_date, record_time), "%Y-%m-%d %H:%M:%S.%f")
+            if explored_date > next_date:
+                reached_current_date = True
+                current_date = explored_date
+                print("LOG: found new interval")
+            else:
+
+                topic = "{}".format(sensor_type)
+                producer.send(topic, "{}".format(sensor_reading).encode())
+                lines_i += 1
+
+                # all data processed
+                if lines_i == len(info_lines):
+                    all_processed = True
+                    print("LOG: all data processed")
+
+
+        """
+
         # sent all previous information to Kafka
+        print("curr start: ", curr_start)
         for i in range(curr_start):
             loc_id = location_ids[i]
             loc_sensor_type = sensor_types[i]
@@ -86,7 +126,7 @@ try:
             topic = "{}".format(loc_sensor_type)
             producer.send(topic, "{}".format(readings[i]).encode())
 
-        print("LOG: sent 1s interval data")
+        print("LOG: sent 30s interval data")
 
         # remove sent elements from arrays
         if not all_processed:
@@ -115,6 +155,7 @@ try:
                 if curr_start == len(date_times):
                     all_processed = True
                     print("LOG: all data processed")
+        """
         time.sleep(SLEEP)
 
 except KeyboardInterrupt:

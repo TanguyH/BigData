@@ -53,7 +53,7 @@ for f in p.glob("*.tmp"):
 print("... done")
 sc = SparkContext("local[*]", "test")
 sc.setLogLevel("WARN")   #Make sure warnings and errors observed by spark are printed.
-ssc = StreamingContext(sc, 5)  #generate a mini-batch every 5 seconds
+ssc = StreamingContext(sc, 30)  #generate a mini-batch every 30 seconds
 
 filestream = ssc.textFileStream(STREAM_IN) #monitor new files in folder stream-IN
 
@@ -83,7 +83,7 @@ def storeRdd(rdd, spark_session, schema, collection):
     print("storedRdd")
 
 rows = filestream.flatMap(parseRow)
-
+rows.pprint()
 #rows.pprint()
 rows.foreachRDD(lambda rdd: storeRdd(rdd, my_spark, schema, statistics))
 

@@ -5,6 +5,7 @@ from pathlib import Path
 import glob
 import os
 import time
+import shutil
 
 BATCH_TIME = 30
 
@@ -25,21 +26,27 @@ if sensor_type not in ["0", "1", "2", "3"]:
 	print("Sensor type value must be in [0,3]")
 	exit()
 
-
+TMP_DATA = "data/tmp_data/"
 STREAM_IN = "stream-IN/"
 struct_files = STREAM_IN + "sensor_type-"+sensor_type		#structure of the batch files for this sensor_type
-
+struct_tmp_file = TMP_DATA + "sensor_type-"+sensor_type
 # We first delete all files from the STREAM_IN folder
 # before starting spark streaming.
 # This way, all files are new
 
-files = glob.glob(struct_files+"*")
+#files = glob.glob(struct_files+"*")
+#for file in files:
+
+#	print("Deleting existing file in %s ..." % STREAM_IN)
+#	os.remove(file)
+#	print("... done")
+
+files = glob.glob(struct_tmp_file+"*")
 for file in files:
 
-	print("Deleting existing file in %s ..." % STREAM_IN)
-	os.remove(file)
-	print("... done")
-
+    print("Deleting existing file in %s ..." % TMP_DATA)
+    os.remove(file)
+    print("... done")
 # initialize consumer
 consumer = KafkaConsumer(sensor_type,
                         bootstrap_servers = ['localhost:9092'],
@@ -51,7 +58,7 @@ consumer = KafkaConsumer(sensor_type,
 consuming = True
 batch_id = 0
 while consuming:
-    file_in = "{}_{}.tmp".format(struct_files, batch_id)
+    file_in = "{}_{}.tmp".format(struct_tmp_file, batch_id)
     f = open(file_in, "w")
     checkpoint = time.time()
     try:
@@ -63,12 +70,16 @@ while consuming:
                 f.close()
                 batch_id += 1
 
-                file_in = "{}_{}.tmp".format(struct_files, batch_id)
+                file_in = "{}_{}.tmp".format(struct_tmp_file, batch_id)
                 f = open(file_in, "w")
                 checkpoint = time.time()
 
-            f.write("{}\n".format(transformRow(row)))
 
+            f.write("{}\n".format(transformRow(row)))
+            #print(type(STREAM_IN))
+            #print(type(file_in))
+            #print(type(f))
+            shutil.copy(file_in, STREAM_IN)
     except KeyboardInterrupt as err:
         print("LOG: Terminating consumer execution for {}".format(sensor_type))
         consuming = False
