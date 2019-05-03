@@ -12,60 +12,7 @@ from pyspark.sql import SparkSession
 import pandas as pd
 import pymongo
 
-STREAM_IN = "stream-IN"
-print("Deleting existing files in %s ..." % STREAM_IN)
-p = Path('.') / STREAM_IN
-for f in p.glob("*.tmp"):
-    os.remove(f)
-print("... done")
-sc = SparkContext("local[*]", "test")
-sc.setLogLevel("WARN")   #Make sure warnings and errors observed by spark are printed.
-#text_file = sc.textFile("stream-IN/sensor_type-0_0.tmp")
-ssc = StreamingContext(sc, 5)  #generate a mini-batch every 5 seconds
 
-filestream = ssc.textFileStream(STREAM_IN) #monitor new files in folder stream-IN
-#print(filestream)
-#text_file = sc.textFile("hdfs://stream-IN/sensor_type-0_0.tmp")
-
-
-# test on pymongo
-# declare database
-DB_NAME = "big_data"
-
-# define client & used DB
-mongo_client = pymongo.MongoClient("mongodb://localhost:27017")
-used_database = mongo_client[DB_NAME]
-db_list = mongo_client.list_database_names()
-
-# verify existence of DB
-if DB_NAME in db_list:
-    print("Database exists")
-else:
-    print("Database does not exist, BUT if it is empty it is normal !")
-
-# add column to DB
-my_spark = SparkSession \
-    .builder \
-    .appName("myApp") \
-    .getOrCreate()
-
-statistics = used_database["statistics"]
-
-import random
-inputs = []
-
-for i in range(100):
-    min, max = random.random(), random.random()
-    if max < min:
-        min, max = max, min
-    avg = (min + max) / 2
-    sensor_type = random.randint(0,3)
-    inputs.append(("time {}".format(i), min, max, avg, sensor_type))
-
-stats = my_spark.createDataFrame(inputs, ["time", "min", "max", "avg", "type"])
-statistics.insert_many(stats.toPandas().to_dict('records'))
-
-exit()
 
 def parseRow(row):
     '''parses a single row into a dictionary'''
@@ -73,7 +20,7 @@ def parseRow(row):
 
     try:
         v = row.split(" ")
-        return [{"topic": int(v[0]),
+        return [{"sensor_type": int(v[0]),
                  "time": datetime.strptime(v[1] + " "+ v[2], "%Y-%m-%d %H:%M:%S.%f"),
                  "p-i": v[3],
                  "measurement": float(v[4]),
@@ -149,7 +96,7 @@ def updateMean(current, state):
         total_count = current_count + state_count
         return ((current_mean * current_count + state_mean *state_count)/total_count, total_count)
 
-def basicStats(space_tag, time_tag):
+def basicStats(filestream, space_tag, time_tag):
     checkAttributes(space_tag, time_tag)
     #filestream = ssc.textFileStream(STREAM_IN)
     #print(filestream)
@@ -159,15 +106,15 @@ def basicStats(space_tag, time_tag):
     #rows.pprint()
     #print(rows.pprint())
     if space_tag == 0: #Group per place
-        group_space = rows.map(lambda r: ((r["topic"],r["p-i"].split("-")[0]), r))
+        group_space = rows.map(lambda r: ((r["sensor_type"],r["p-i"].split("-")[0]), r))
         #key = (sensor_type, place), value = row
 
     elif space_tag == 1: #Group per municipality
-        group_space = rows.map(lambda r: ((r["topic"],r["municipality"]), r))
+        group_space = rows.map(lambda r: ((r["sensor_type"],r["municipality"]), r))
         #key = (sensor_type, municipality), value = row
 
     else:                #Group for Brussels
-        group_space = rows.map(lambda r: ((r["topic"]), r))
+        group_space = rows.map(lambda r: ((r["sensor_type"]), r))
         #key = (sensor_type), value = row
     #print(group_space.pprint())
     #current_time = datetime.now()   #Ideally
@@ -176,6 +123,7 @@ def basicStats(space_tag, time_tag):
     #tmp_time.pprint()
     #current_time = tmp_time.reduceByKey(lambda r1, r2: max(r1, r2, key=lambda r: r["measurement"]))
     #current_time.pprint()
+    """
     current_time = datetime.strptime("2017-02-28 00:09:19.196", "%Y-%m-%d %H:%M:%S.%f") #As in stream_to_kafka file
     if time_tag == 0:   #Last 24h
         window_time = 60*60*24
@@ -191,10 +139,12 @@ def basicStats(space_tag, time_tag):
 
     else:                #Last year
         window_time = 60*60*24*365.25
+    """
 
+    #bd attributes : sensor id - max value - min value - avg value - nb
 
-    max_by_group_batch = group_space.reduceByKey(lambda r1, r2: max(r1, r2, key=lambda r: r["measurement"])).window(window_time, 10)
-    min_by_group_batch = group_space.reduceByKey(lambda r1, r2: min(r1, r2, key=lambda r: r["measurement"])).window(window_time, 10)
+    max_by_group_batch = group_space.reduceByKey(lambda r1, r2: max(r1, r2, key=lambda r: r["measurement"]))#.window(window_time, 10)
+    min_by_group_batch = group_space.reduceByKey(lambda r1, r2: min(r1, r2, key=lambda r: r["measurement"]))#.window(window_time, 10)
     #We get basic stats for each batch within the window
 
 
@@ -205,18 +155,18 @@ def basicStats(space_tag, time_tag):
 
 
 
-    mean_by_group_window = group_space.transform(lambda rdd: rdd.aggregateByKey((0,0),
-                    lambda acc1, value: (acc1[0] + value["measurement"]   , acc1[1] + 1   ),
-                    lambda acc1, acc2: (acc1[0] + acc2[0], acc1[1] + acc2[1]) )\
-                    .mapValues(lambda v: (v[0]/v[1], v[1])) \
-                    .sortBy(lambda pair: pair[1], False)
-                    ).window(window_time,10).reduceByKey(lambda r1, r2: ( (r1[0]*r1[1]+r2[0]*r2[1])/(r1[1]+r2[1]), (r1[1]+r2[1]) ))
+    #mean_by_group_window = group_space.transform(lambda rdd: rdd.aggregateByKey((0,0),
+    #                lambda acc1, value: (acc1[0] + value["measurement"]   , acc1[1] + 1   ),
+    #                lambda acc1, acc2: (acc1[0] + acc2[0], acc1[1] + acc2[1]) )\
+    #                .mapValues(lambda v: (v[0]/v[1], v[1])) \
+    #                .sortBy(lambda pair: pair[1], False)
+    #                ).window(window_time,10).reduceByKey(lambda r1, r2: ( (r1[0]*r1[1]+r2[0]*r2[1])/(r1[1]+r2[1]), (r1[1]+r2[1]) ))
 
 
 
     max_by_group_window.pprint()
     min_by_group_window.pprint()
-    mean_by_group_window.pprint()
+    #mean_by_group_window.pprint()
     # set the spark checkpoint
     # folder to the subfolder of the current folder named "checkpoint"
     sc.setCheckpointDir("checkpoint")
@@ -224,6 +174,65 @@ def basicStats(space_tag, time_tag):
     ssc.awaitTermination()
 
 
-basicStats(2,0)
-#volumePerClient = orders.map(lambda o: (o['clientId'], o['amount'] * o['price']))
-#volumeState = volumePerClient.updateStateByKey(lambda vals, totalOpt: sum(vals) + totalOpt if totalOpt != None else sum(vals))
+# test on pymongo
+# declare database
+DB_NAME = "big_data"
+
+# define client & used DB
+mongo_client = pymongo.MongoClient("mongodb://localhost:27017")
+used_database = mongo_client[DB_NAME]
+db_list = mongo_client.list_database_names()
+statistics = used_database["statistics"]
+
+# verify existence of DB
+if DB_NAME in db_list:
+    print("Database exists")
+else:
+    print("Database does not exist, BUT if it is empty it is normal !")
+
+STREAM_IN = "stream-IN"
+print("Deleting existing files in %s ..." % STREAM_IN)
+p = Path('.') / STREAM_IN
+for f in p.glob("*.tmp"):
+    os.remove(f)
+print("... done")
+sc = SparkContext("local[*]", "test")
+sc.setLogLevel("WARN")   #Make sure warnings and errors observed by spark are printed.
+ssc = StreamingContext(sc, 5)  #generate a mini-batch every 5 seconds
+
+filestream = ssc.textFileStream(STREAM_IN) #monitor new files in folder stream-IN
+
+
+
+# add column to DB
+my_spark = SparkSession \
+    .builder \
+    .appName("myApp") \
+    .getOrCreate()
+
+
+schema = StructType([
+    StructField("sensor_type",IntegerType(), True),
+    StructField("time",TimestampType(), True),
+    StructField("p-i",StringType(), True),
+    StructField("measurement",FloatType(), True),
+    StructField("voltage",FloatType(), True),
+    StructField("municipality",StringType(), True),
+    ])
+
+#basicStats(filestream, 2,0)
+def storeRdd(rdd, spark_session, schema, collection):
+    info_batch = spark_session.createDataFrame(rdd, schema)
+    df = info_batch.toPandas().to_dict('records')
+    if df != []:
+        collection.insert_many(info_batch.toPandas().to_dict('records'))
+    print("storedRdd")
+
+rows = filestream.flatMap(parseRow)
+
+#rows.pprint()
+rows.foreachRDD(lambda rdd: storeRdd(rdd, my_spark, schema, statistics))
+
+ssc.start()
+ssc.awaitTermination()
+
