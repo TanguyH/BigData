@@ -13,7 +13,7 @@ date_times = []
 location_ids = []
 sensor_types = []
 readings = []
-municipalities = []
+#municipalities = []
 
 # picked random time in scope
 
@@ -24,16 +24,16 @@ current_date = datetime.strptime("2017-02-28 00:01:19.196", "%Y-%m-%d %H:%M:%S.%
 data_file = "{}/{}".format(DATA_LOCATION, SORTED_FILE)
 sorted_info = open(data_file, "r")
 
-location_file = "{}/{}".format(DATA_LOCATION, LOCATION_FILE)
-locations = open(location_file, "r")
+#location_file = "{}/{}".format(DATA_LOCATION, LOCATION_FILE)
+#locations = open(location_file, "r")
 
 # unpack all locations
-for location in locations.readlines():
-    location = location.strip()
-    location_id, location_municipality, location_privacy = location.split(" ")
-    municipalities.append(location_municipality+" "+ location_privacy)
+#for location in locations.readlines():
+#    location = location.strip()
+#    location_id, location_municipality, location_privacy = location.split(" ")
+#    municipalities.append(location_municipality+" "+ location_privacy)
 
-locations.close()
+#locations.close()
 
 # unpack all data
 for sensor_reading in sorted_info.readlines():
@@ -81,11 +81,10 @@ try:
         # sent all previous information to Kafka
         for i in range(curr_start):
             loc_id = location_ids[i]
-            loc_municipality = municipalities[loc_id - 1]
             loc_sensor_type = sensor_types[i]
 
             topic = "{}".format(loc_sensor_type)
-            producer.send(topic, "{} {}".format(readings[i], loc_municipality).encode())
+            producer.send(topic, "{}".format(readings[i]).encode())
 
         print("LOG: sent 1s interval data")
 
