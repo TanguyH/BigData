@@ -1,6 +1,40 @@
 import random
 from os import listdir
 from os.path import isfile, join
+import pymongo
+
+# declare database
+DB_NAME = "big_data"
+
+# define client & used DB
+mongo_client = pymongo.MongoClient("mongodb://localhost:27017")
+used_database = mongo_client[DB_NAME]
+db_list = mongo_client.list_database_names()
+
+used_database["municipality_spaces"].drop()
+used_database["space_sensors"].drop()
+
+municipality_spaces = used_database["municipality_spaces"]  #Collection top_frequency
+space_sensors = used_database["space_sensors"]
+
+"""
+schema_mun = StructType([
+    StructField("space_id",IntegerType(), True),
+    StructField("municipality",StringType(), True),
+    StructField("privacy", StringType(), True)
+])
+
+schema_sen = StructType([
+    StructField("sensor_id", IntegerType(), True),
+    StructField("space_id", IntegerType(), True)
+])
+"""
+
+# verify existence of DB
+if DB_NAME in db_list:
+    print("Database exists")
+else:
+    print("Database does not exist, BUT if it is empty it is normal !")
 
 NUMBER_OF_SPACES = 10000
 NUMBER_OF_SENSORS = 100000
@@ -22,6 +56,11 @@ for file in space_files:
     attributed_municipality = random.choice(MUNICIPALITIES)
     attributed_privacy = random.choice(PRIVACY)
 
+    space_info = {"space_id": space_id,
+                    "municipality": attributed_municipality,
+                    "privacy": attributed_privacy}
+    municipality_spaces.insert_one(space_info)
+
     # open space file
     space_file = open("{}/{}".format(LOCATION_SOURCE, file), "r")
 
@@ -30,6 +69,8 @@ for file in space_files:
         sensor_number, x_coord, y_coord = line.strip().split(" ")
         to_dispatch.remove(int(sensor_number))
         space_location.write("{} {} {} {} {} {}\n".format(space_id, sensor_number, x_coord, y_coord, attributed_municipality, attributed_privacy))
+        sensor_info = {"p-i": int(sensor_number), "space_id": int(space_id)}
+        space_sensors.insert_one(sensor_info)
     space_file.close()
 space_location.close()
 
