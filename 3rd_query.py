@@ -33,7 +33,6 @@ def storeRdd(rdd, spark_session, schema, collection):
     info_batch = spark_session.createDataFrame(rdd, schema)
     df = info_batch.toPandas().to_dict('records')
     if df != []:
-        print(df)
         collection.insert_many(info_batch.toPandas().to_dict('records'))
         print("storedRdd")
     print("End call storedRdd")
@@ -75,8 +74,8 @@ my_spark = SparkSession \
 
 
 schema = StructType([
-    StructField("measurement",FloatType(), True),   #Measurement that appeared with a high (arbitrary) frequency during the last 1h window
-    StructField("frequency",FloatType(), True),     #Associated frequency
+    StructField("measurement",DoubleType(), True),   #Measurement that appeared with a high (arbitrary) frequency during the last 1h window
+    StructField("frequency",DoubleType(), True),     #Associated frequency
     StructField("time", TimestampType(), True)      #datetime of the last element of the current batch (take care of the window aspect in db)
     ])
 
@@ -91,6 +90,7 @@ last_time = rows.map(lambda r:(r["time"])).reduce(lambda r1, r2: max(r1, r2))   
 
 num_per_value = rows.map(lambda r: (r["measurement"])).countByValue().window(window_time,window_slide)  #Last hour, window slide = 15sec
 
+num_per_value.pprint()
 total_count = rows.count().window(window_time,window_slide).reduce(add)        #Get the total number of record within the window -> to compute relative frequencies
 
 freq_per_value = num_per_value.transformWith(lambda rdd1, rdd2: rdd1.cartesian(rdd2),total_count)\
