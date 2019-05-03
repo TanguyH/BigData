@@ -81,7 +81,6 @@ schema = StructType([
 
 window_time = 60*60 #one hour
 window_slide = 10   #15sec
-freq_tresh = 1./20
 rows = filestream.flatMap(parseRow).filter(lambda r: int(r["p-i"].split("-")[1]) == 0)      #Get only the temperature sensors
 
 last_time = rows.map(lambda r:(r["time"])).reduce(lambda r1, r2: max(r1, r2))       #Last time object of the batch
@@ -89,7 +88,6 @@ last_time = rows.map(lambda r:(r["time"])).reduce(lambda r1, r2: max(r1, r2))   
 
 num_per_value = rows.map(lambda r: (r["measurement"])).countByValue().window(window_time,window_slide)  #Last hour, window slide = 15sec
 
-num_per_value.pprint()
 total_count = rows.count().window(window_time,window_slide).reduce(add)        #Get the total number of record within the window -> to compute relative frequencies
 
 freq_per_value = num_per_value.transformWith(lambda rdd1, rdd2: rdd1.cartesian(rdd2),total_count)\
@@ -100,7 +98,6 @@ top_freq = freq_per_value.transform(lambda rdd: rdd.sortBy(lambda r: r[1], False
 top_freq_date = top_freq.transformWith(lambda rdd1, rdd2: rdd1.cartesian(rdd2),last_time)\
                                 .map(lambda r: (r[0][0], r[0][1], r[1]))
 
-top_freq_date.pprint()
 top_freq_date.foreachRDD(lambda rdd: storeRdd(rdd, my_spark, schema, window_collection))
 
 sc.setCheckpointDir("checkpoint")
