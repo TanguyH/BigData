@@ -28,7 +28,8 @@ python3 data_sorter.py
 
 **Note:** this execution might take time..
 
-##### Starting the pipeline
+##### Starting the pipeline (src/ folder)
+
 In order to get the pipeline running, several servers should be instantiated: ZooKeeper, Kafka and MongoDB. To make this process easier, simply execute following command in Terminal:
 ```
 sh start_backend.sh
