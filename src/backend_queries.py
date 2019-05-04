@@ -19,19 +19,22 @@ def parseRow(row):
 
     try:
         v = row.split(" ")
-        return [{"sensor_type": int(v[0]),
-                 "time": datetime.strptime(v[1] + " "+ v[2], "%Y-%m-%d %H:%M:%S.%f"),
-                 "p-i": v[3],
-                 "measurement": round(float(v[4]),1),       #rounded precision to 1 digit (follow the requirements)
-                 "voltage": float(v[5])}]
+        if(len(v) == 6):
+            return [{"sensor_type": int(v[0]),
+                     "time": datetime.strptime(v[1] + " "+ v[2], "%Y-%m-%d %H:%M:%S.%f"),
+                     "p-i": v[3],
+                     "measurement": round(float(v[4]),1),       #rounded precision to 1 digit (follow the requirements)
+                     "voltage": float(v[5])}]
     except Exception as err:
-        print("Unexpected error: %s" % (err))
+        print("Unexpected error 1: %s" % (err))
 
 
 def parseRowTimeSlots(row):
     '''parses a single row into a dictionary'''
     try:
         v = row.split(" ")
+        if(v[2][-1] == "."):
+            v[2] = "{}000".format(v[2])
         date_time = datetime.strptime(v[1] + " "+ v[2], "%Y-%m-%d %H:%M:%S.%f")
         day = date_time.date()  #Retrieve day
         time = date_time.time() #Retrieve time (rest of info)
@@ -39,15 +42,16 @@ def parseRowTimeSlots(row):
             slot = 4*time.hour + time.minute//15 - 1
         else:
             slot = 4*time.hour + time.minute//15
-        return [{"sensor_type": int(v[0]),
-                "time": date_time,
-                "slot": slot,
-                "p-i": v[3],
-                "measurement":float(v[4]),
-                "voltage": float(v[5])}]
+        if(len(v) == 6):
+            return [{"sensor_type": int(v[0]),
+                    "time": date_time,
+                    "slot": slot,
+                    "p-i": v[3],
+                    "measurement":float(v[4]),
+                    "voltage": float(v[5])}]
 
     except Exception as err:
-        print("Unexpected error: %s" % (err))
+        print("Unexpected error 2: %s" % (err))
 
 
 def storeRdd(rdd, spark_session, schema, collection):
@@ -61,7 +65,7 @@ def storeRdd(rdd, spark_session, schema, collection):
 					collection.insert_many(df)
 					print("storedRdd")
 		except Exception as err:
-			print("Unexpected error: %s" % (err))
+			print("Unexpected error 3: %s" % (err))
 
 
 	print("End call storedRdd")
@@ -147,7 +151,7 @@ last_time = rows_classif.map(lambda r:(r["time"])).reduce(lambda r1, r2: max(r1,
 num_per_value = rows_classif.map(lambda r: (r["measurement"])).countByValue().window(window_time,window_slide)  #Last hour, window slide = 15sec
 
 
-num_distinct_value = num_per_value.count() 
+num_distinct_value = num_per_value.count()
 
 total_count = rows_classif.count().window(window_time,window_slide).reduce(add)        #Get the total number of record within the window -> to compute relative frequencies
 

@@ -28,7 +28,7 @@ python3 data_sorter.py
 
 **Note:** this execution might take time..
 
-##### Starting the pipeline (src/ folder)
+##### Starting the pipeline (in src/ folder)
 
 In order to get the pipeline running, several servers should be instantiated: ZooKeeper, Kafka and MongoDB. To make this process easier, simply execute following command in Terminal:
 ```
@@ -54,9 +54,14 @@ Once we dispose of an initialized pipeline, we should capture streamed data usin
 sh start_reception.sh
 ```
 
-
 ##### Visualizing the dashboard
 To visualize the dashboard, one simply requires to run jupyter with following command in an empty Terminal:
 `jupyter notebook`
 
 By selecting the file with .ipynb, you will have access to the Dashboard and be able to visualize queries.
+
+##### Ending the pipeline
+The scripts we use make a lot of tasks run in the background. For this purpose, we have decided to make ending these tasks easier by running following command:
+```
+sh kill_daemons.sh
+```
